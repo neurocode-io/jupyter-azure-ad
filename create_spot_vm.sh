@@ -6,7 +6,7 @@ resourceGroup=ne-icelandic-model-$(whoami)
 vmName=ne-icelandic-model-$(whoami)
 
 # neurocode.io
-az account set -s e9a0397c-9b68-49ea-ae88-dcbd2f08e73e
+az account set -s $subscriptionId
 
 az group create \
   -l northeurope \
@@ -31,21 +31,35 @@ az network nsg rule create \
     --protocol '*' \
     --description "Allow 8080 incoming"
 
-az vm create \
-  -n $vmName \
-  -g $resourceGroup \
-  --image UbuntuLTS \
-  --size Standard_B1S \
-  --vnet-name ne-network-first-16 \
-  --nsg $vmName-nsg \
-  --subnet ne-subnet-first-24 \
-  --admin-username azureuser \
-  --admin-password $(openssl rand -base64 20) \
-  --authentication-type password
-  # --priority Spot \
-  # --eviction-policy Deallocate \
-  # --max-price -1 \
-
+if [ $spotInstance = true ]
+then
+  az vm create \
+    -n $vmName \
+    -g $resourceGroup \
+    --image UbuntuLTS \
+    --size $vmSize \
+    --vnet-name ne-network-first-16 \
+    --nsg $vmName-nsg \
+    --subnet ne-subnet-first-24 \
+    --admin-username azureuser \
+    --admin-password $(openssl rand -base64 20) \
+    --authentication-type password \
+    --priority Spot \
+    --eviction-policy Deallocate \
+    --max-price -1
+else
+  az vm create \
+    -n $vmName \
+    -g $resourceGroup \
+    --image UbuntuLTS \
+    --size $vmSize \
+    --vnet-name ne-network-first-16 \
+    --nsg $vmName-nsg \
+    --subnet ne-subnet-first-24 \
+    --admin-username azureuser \
+    --admin-password $(openssl rand -base64 20) \
+    --authentication-type password
+fi
 
 # Install docker:
 
