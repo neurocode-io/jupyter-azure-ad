@@ -1,23 +1,23 @@
 #!/bin/bash
 
-set -e
+set -eu
 
 if ! command -v jq &> /dev/null
 then
     echo "jq could not be found. Please install it: https://stedolan.github.io/jq/download/"
-    exit
+    exit 1
 fi
 
 if ! command -v az &> /dev/null
 then
     echo "Azure CLI could not be found. Please install it: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
-    exit
+    exit 1
 fi
 
 if ! command -v openssl &> /dev/null
 then
     echo "OpenSSL could not be found. Please install it e.g. apt install openssl"
-    exit
+    exit 1
 fi
 
 # neurocode.io

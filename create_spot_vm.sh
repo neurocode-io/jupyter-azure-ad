@@ -1,9 +1,9 @@
 #!/bin/bash
 
-set -e
+set -eu
 
-resourceGroup=ne-icelandic-model-$(whoami)
-vmName=ne-icelandic-model-$(whoami)
+resourceGroup=jupyter-notebook-$(whoami)
+vmName=jupyter-notebook-$(whoami)
 
 # neurocode.io
 az account set -s $subscriptionId
@@ -16,6 +16,25 @@ az network nsg create \
   -g $resourceGroup \
   -n $vmName-nsg
 
+
+objectId=$(az identity create -g $resourceGroup -n $vmName-identity | jq -r '.principalId')
+az keyvault create --location northeurope --name $vmName-keyvault --resource-group $resourceGroup
+
+# {
+#     "clientId": "73444643-8088-4d70-9532-c3a0fdc190fz",
+#     "clientSecretUrl": "https://control-westcentralus.identity.azure.net/subscriptions/<SUBSCRIPTON ID>/resourcegroups/<RESOURCE GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<myUserAssignedIdentity>/credentials?tid=5678&oid=9012&aid=73444643-8088-4d70-9532-c3a0fdc190fz",
+#     "id": "/subscriptions/<SUBSCRIPTON ID>/resourcegroups/<RESOURCE GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<USER ASSIGNED IDENTITY NAME>",
+#     "location": "westcentralus",
+#     "name": "<USER ASSIGNED IDENTITY NAME>",
+#     "principalId": "e5fdfdc1-ed84-4d48-8551-fe9fb9dedfll",
+#     "resourceGroup": "<RESOURCE GROUP>",
+#     "tags": {},
+#     "tenantId": "733a8f0e-ec41-4e69-8ad8-971fc4b533bl",
+#     "type": "Microsoft.ManagedIdentity/userAssignedIdentities"    
+# }
+az ad sp show --id XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX --query objectId --out tsv
+
+az keyvault set-policy --name $vmName-keyvault --object-id $objectId --secret-permissions get list 
 
 # Allow from everywhere on port 8080
 # Azure already has a DenyAllInBound nsg-rule (Priority 65500)
@@ -38,27 +57,25 @@ then
     -g $resourceGroup \
     --image UbuntuLTS \
     --size $vmSize \
-    --vnet-name ne-network-first-16 \
     --nsg $vmName-nsg \
-    --subnet ne-subnet-first-24 \
     --admin-username azureuser \
-    --admin-password $(openssl rand -base64 20) \
+    --admin-password $vmAdminPassword \
     --authentication-type password \
     --priority Spot \
     --eviction-policy Deallocate \
-    --max-price -1
+    --max-price -1 \
+    --assign-identity $vmName-identity
 else
   az vm create \
     -n $vmName \
     -g $resourceGroup \
     --image UbuntuLTS \
     --size $vmSize \
-    --vnet-name ne-network-first-16 \
     --nsg $vmName-nsg \
-    --subnet ne-subnet-first-24 \
     --admin-username azureuser \
-    --admin-password $(openssl rand -base64 20) \
-    --authentication-type password
+    --admin-password $vmAdminPassword \
+    --authentication-type password \
+    --assign-identity $vmName-identity
 fi
 
 # Install docker:
