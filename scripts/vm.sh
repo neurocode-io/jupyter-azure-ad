@@ -2,8 +2,9 @@
 
 set -eu
 
-resourceGroup=jupyter-notebook-$(whoami)
-vmName=jupyter-notebook-$(whoami)
+resourceGroup=rg-ne-jupyter-notebook-$(whoami)
+vmName=vm-ne-jupyter-notebook-$(whoami)
+az account set -s $subscriptionId
 
 function create_resource_group() {
   az group create \
@@ -14,14 +15,14 @@ function create_resource_group() {
 function create_nsg() {
   az network nsg create \
     -g $resourceGroup \
-    -n $vmName-nsg
+    -n nsg-$vmName
 
   # Allow from everywhere on port 8080
   # Azure already has a DenyAllInBound nsg-rule (Priority 65500)
   az network nsg rule create \
     -g $resourceGroup \
-    --nsg-name $vmName-nsg \
-    -n $vmName-nsg-allow-8080-rule \
+    --nsg-name nsg-$vmName \
+    -n allow-8080 \
     --priority 4000 \
     --direction Inbound \
     --source-address-prefixes '*' --source-port-ranges '*' \
@@ -40,25 +41,25 @@ function create_vm() {
       -g $resourceGroup \
       --image UbuntuLTS \
       --size $vmSize \
-      --nsg $vmName-nsg \
+      --nsg nsg-$vmName \
       --admin-username azureuser \
       --admin-password $vmAdminPassword \
       --authentication-type password \
       --priority Spot \
       --eviction-policy Deallocate \
       --max-price -1 \
-      --assign-identity $vmName-identity
+      --assign-identity id-$vmName
   else
     az vm create \
       -n $vmName \
       -g $resourceGroup \
       --image UbuntuLTS \
       --size $vmSize \
-      --nsg $vmName-nsg \
+      --nsg nsg-$vmName \
       --admin-username azureuser \
       --admin-password $vmAdminPassword \
       --authentication-type password \
-      --assign-identity $vmName-identity
+      --assign-identity id-$vmName
   fi
 }
 
@@ -108,3 +109,12 @@ function add_extensions() {
       --query "instanceView.extensions"
 }
 
+create_resource_group
+create_nsg
+create_vm
+add_extensions
+
+appId=$(az ad app list --filter "displayname eq 'jupyter-notebook-ad-login'" | jq -r '.[0].appId')
+ipAddress=$(az vm list-ip-addresses -g $resourceGroup -n $vmName | jq -r '.[0].virtualMachine.network.publicIpAddresses[0].ipAddress')
+
+az ad app update --id $appId --reply-urls "http://${ipAddress}:8080/oauth2/callback"
