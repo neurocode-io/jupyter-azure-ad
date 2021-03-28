@@ -2,11 +2,14 @@ package main
 
 import (
 	"crypto/tls"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 )
 
 func errHandler(res http.ResponseWriter, req *http.Request, err error) {
@@ -15,6 +18,24 @@ func errHandler(res http.ResponseWriter, req *http.Request, err error) {
 }
 
 func main() {
+	certPath := flag.String("cert", "", "server cert location")
+	keyPath := flag.String("key", "", "private key location")
+	flag.Parse()
+
+	if *certPath == "" || *keyPath == "" {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	var err error
+
+	_, err = ioutil.ReadFile(*certPath)
+	_, err = ioutil.ReadFile(*keyPath)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		// AD authentication running on 8080
@@ -42,5 +63,5 @@ func main() {
 		TLSConfig:    cfg,
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 	}
-	log.Fatal(srv.ListenAndServeTLS("cert.pem", "key.pem"))
+	log.Fatal(srv.ListenAndServeTLS(*certPath, *keyPath))
 }
