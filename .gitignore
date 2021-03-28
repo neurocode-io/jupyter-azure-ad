@@ -5,7 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
-
+# openssl
+.pem
 # Distribution / packaging
 .Python
 build/

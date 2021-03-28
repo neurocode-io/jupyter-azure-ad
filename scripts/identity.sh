@@ -32,7 +32,7 @@ function create_ad_app() {
     --display-name jupyter-notebook-ad-login \
     --native-app \
     --required-resource-accesses "$(cat scripts/manifest.json)" \
-    --reply-urls http://localhost:8080
+    --reply-urls https://localhost:8443/oauth2/callback
 
   # Azure AD is eventual consitent ;)
   sleep 5

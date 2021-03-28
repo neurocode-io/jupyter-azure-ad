@@ -17,19 +17,19 @@ function create_nsg() {
     -g $resourceGroup \
     -n nsg-$vmName
 
-  # Allow from everywhere on port 8080
+  # Allow from everywhere on port 8443
   # Azure already has a DenyAllInBound nsg-rule (Priority 65500)
   az network nsg rule create \
     -g $resourceGroup \
     --nsg-name nsg-$vmName \
-    -n allow-8080 \
+    -n allow-8433 \
     --priority 4000 \
     --direction Inbound \
     --source-address-prefixes '*' --source-port-ranges '*' \
-    --destination-address-prefixes '*' --destination-port-ranges '8080' \
+    --destination-address-prefixes '*' --destination-port-ranges '8443' \
     --access Allow \
     --protocol '*' \
-    --description "Allow 8080 incoming"
+    --description "Allow https (8443) incoming"
 }
 
 
@@ -117,4 +117,4 @@ add_extensions
 appId=$(az ad app list --filter "displayname eq 'jupyter-notebook-ad-login'" | jq -r '.[0].appId')
 ipAddress=$(az vm list-ip-addresses -g $resourceGroup -n $vmName | jq -r '.[0].virtualMachine.network.publicIpAddresses[0].ipAddress')
 
-az ad app update --id $appId --reply-urls "http://${ipAddress}:8080/oauth2/callback"
+az ad app update --id $appId --reply-urls "https://${ipAddress}:8443/oauth2/callback"
